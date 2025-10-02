@@ -1,3 +1,4 @@
+export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type VideoLength = '8s' | '16s' | '30s';
 export type StylePreset = 'cinematic' | 'comedy-short' | 'edgy-editorial' | 'childrens-story';
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import type { VideoLength, StylePreset } from '../types';
-import { VIDEO_LENGTH_OPTIONS, STYLE_PRESET_OPTIONS } from '../constants';
+import type { VideoLength, StylePreset, AspectRatio } from '../types';
+import { VIDEO_LENGTH_OPTIONS, STYLE_PRESET_OPTIONS, ASPECT_RATIO_OPTIONS } from '../constants';
 import { SparklesIcon } from './IconComponents';
 
 interface InputPanelProps {
@@ -10,11 +10,13 @@ interface InputPanelProps {
   setLength: (length: VideoLength) => void;
   preset: StylePreset;
   setPreset: (preset: StylePreset) => void;
+  aspectRatio: AspectRatio;
+  setAspectRatio: (ratio: AspectRatio) => void;
   onGenerate: () => void;
   isLoading: boolean;
 }
 
-const InputPanel: React.FC<InputPanelProps> = ({ story, setStory, length, setLength, preset, setPreset, onGenerate, isLoading }) => {
+const InputPanel: React.FC<InputPanelProps> = ({ story, setStory, length, setLength, preset, setPreset, aspectRatio, setAspectRatio, onGenerate, isLoading }) => {
   return (
     <div className="bg-brand-surface-light dark:bg-brand-surface rounded-xl shadow-lg p-6 space-y-6 h-full flex flex-col">
       <h2 className="text-lg font-semibold text-brand-text-light dark:text-brand-text">1. Describe Your Vision</h2>
@@ -43,6 +45,27 @@ const InputPanel: React.FC<InputPanelProps> = ({ story, setStory, length, setLen
               onClick={() => setLength(option.value)}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 length === option.value
+                  ? 'bg-brand-primary text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-brand-bg hover:bg-gray-200 dark:hover:bg-white/10'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+       <div>
+        <label htmlFor="aspect-ratio" className="text-sm font-medium text-brand-subtle-light dark:text-brand-subtle mb-2 block">
+          Aspect Ratio
+        </label>
+        <div className="grid grid-cols-4 gap-2">
+          {ASPECT_RATIO_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setAspectRatio(option.value)}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                aspectRatio === option.value
                   ? 'bg-brand-primary text-white shadow-md'
                   : 'bg-gray-100 dark:bg-brand-bg hover:bg-gray-200 dark:hover:bg-white/10'
               }`}

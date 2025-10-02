@@ -1,34 +1,40 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { Moodboard, VideoLength, StylePreset, Scene } from './types';
+import type { Moodboard, VideoLength, StylePreset, Scene, AspectRatio } from './types';
 import { generateMoodboard, regenerateFinalPrompt, generateSingleImage } from './services/geminiService';
 import Header from './components/Header';
 import InputPanel from './components/InputPanel';
 import MoodboardPanel from './components/MoodboardPanel';
 import PromptPanel from './components/PromptPanel';
+import AnimatedBackground from './components/AnimatedBackground';
 
 declare const jspdf: any;
 declare const html2canvas: any;
 
 type Theme = 'light' | 'dark';
 
+// This function will be the initializer for useState.
+// It derives the theme from the DOM state, which is set synchronously by an inline script in index.html.
+// This ensures React's initial state matches the initial DOM, preventing hydration errors.
+const getInitialThemeFromDOM = (): Theme => {
+  if (typeof window !== 'undefined' && document.documentElement.classList.contains('dark')) {
+    return 'dark';
+  }
+  return 'light';
+};
+
 const App: React.FC = () => {
   const [storyInput, setStoryInput] = useState<string>('A sleepy teen wakes up late, rushes out, trips on skateboard, comedic beat.');
   const [videoLength, setVideoLength] = useState<VideoLength>('16s');
   const [stylePreset, setStylePreset] = useState<StylePreset>('cinematic');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [moodboard, setMoodboard] = useState<Moodboard | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-        const storedTheme = window.localStorage.getItem('theme');
-        if (storedTheme === 'light' || storedTheme === 'dark') {
-            return storedTheme;
-        }
-    }
-    return 'dark';
-  });
+  const [theme, setTheme] = useState<Theme>(getInitialThemeFromDOM);
 
+  // This effect correctly syncs any *changes* to the theme (e.g., from the toggle button)
+  // back to the DOM's class and to localStorage for persistence.
   useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') {
@@ -52,16 +58,66 @@ const App: React.FC = () => {
     setError(null);
     setMoodboard(null);
 
+    let generatedMoodboard: Moodboard | null = null;
     try {
-      const result = await generateMoodboard(storyInput, videoLength, stylePreset);
-      setMoodboard({ ...result, isDirty: false });
+      // Step 1: Generate the moodboard structure without images.
+      generatedMoodboard = await generateMoodboard(storyInput, videoLength, stylePreset, aspectRatio);
+      
+      // Step 2: Display the moodboard structure immediately.
+      setMoodboard({ ...generatedMoodboard, isDirty: false });
+      setIsLoading(false); // Turn off main loading spinner.
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-    } finally {
       setIsLoading(false);
+      return; // Stop if structure generation fails.
     }
-  }, [storyInput, videoLength, stylePreset]);
+
+    // Step 3: Sequentially generate an image for each scene.
+    if (generatedMoodboard) {
+      const scenesToProcess = [...generatedMoodboard.scenes];
+
+      for (const scene of scenesToProcess) {
+        // Set loading state for the current scene's image.
+        setMoodboard(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            scenes: prev.scenes.map(s => 
+              s.id === scene.id ? { ...s, thumbnail_url: 'loading' } : s
+            ),
+          };
+        });
+
+        try {
+          // Generate the image.
+          const imageUrl = await generateSingleImage(scene.thumbnail_prompt, aspectRatio);
+          // Update the scene with the new image URL.
+          setMoodboard(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              scenes: prev.scenes.map(s => 
+                s.id === scene.id ? { ...s, thumbnail_url: imageUrl } : s
+              ),
+            };
+          });
+        } catch (imgErr) {
+          console.error(`Failed to generate image for scene ${scene.id}:`, imgErr);
+          // Update the scene with an error state.
+          setMoodboard(prev => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              scenes: prev.scenes.map(s => 
+                s.id === scene.id ? { ...s, thumbnail_url: 'error' } : s
+              ),
+            };
+          });
+        }
+      }
+    }
+  }, [storyInput, videoLength, stylePreset, aspectRatio]);
 
   const handleSceneUpdate = useCallback((sceneId: string, updatedScene: Scene) => {
     setMoodboard(prev => {
@@ -83,14 +139,14 @@ const App: React.FC = () => {
     handleSceneUpdate(sceneId, { ...sceneToUpdate, thumbnail_url: 'loading' });
 
     try {
-        const updatedImageUrl = await generateSingleImage(sceneToUpdate.thumbnail_prompt);
+        const updatedImageUrl = await generateSingleImage(sceneToUpdate.thumbnail_prompt, aspectRatio);
         handleSceneUpdate(sceneId, { ...sceneToUpdate, thumbnail_url: updatedImageUrl });
     } catch(err) {
         console.error(err);
         // Revert to original or show error state
         handleSceneUpdate(sceneId, { ...sceneToUpdate, thumbnail_url: 'error' });
     }
-  }, [moodboard, handleSceneUpdate]);
+  }, [moodboard, handleSceneUpdate, aspectRatio]);
 
   const handleUpdatePrompt = useCallback(async () => {
     if (!moodboard) return;
@@ -178,40 +234,45 @@ const App: React.FC = () => {
   }, [moodboard, theme]);
   
   return (
-    <div className="min-h-screen bg-brand-bg-light dark:bg-brand-bg text-brand-text-light dark:text-brand-text flex flex-col">
-      <Header theme={theme} toggleTheme={toggleTheme} />
-      <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-3">
-          <InputPanel
-            story={storyInput}
-            setStory={setStoryInput}
-            length={videoLength}
-            setLength={setVideoLength}
-            preset={stylePreset}
-            setPreset={setStylePreset}
-            onGenerate={handleGenerate}
-            isLoading={isLoading}
-          />
-        </div>
-        <div className="lg:col-span-6">
-          <MoodboardPanel
-            moodboard={moodboard}
-            isLoading={isLoading}
-            error={error}
-            onSceneUpdate={handleSceneUpdate}
-            onRegenerateImage={handleRegenerateImage}
-          />
-        </div>
-        <div className="lg:col-span-3">
-          <PromptPanel 
-            moodboard={moodboard} 
-            onExportJson={handleExportJson}
-            onExportPdf={handleExportPdf}
-            onUpdatePrompt={handleUpdatePrompt}
-            isUpdating={isUpdating}
-          />
-        </div>
-      </main>
+    <div className="min-h-screen flex flex-col">
+      <AnimatedBackground theme={theme} />
+      <div className="relative z-0 flex flex-col flex-grow">
+        <Header theme={theme} toggleTheme={toggleTheme} />
+        <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-3">
+            <InputPanel
+              story={storyInput}
+              setStory={setStoryInput}
+              length={videoLength}
+              setLength={setVideoLength}
+              preset={stylePreset}
+              setPreset={setStylePreset}
+              aspectRatio={aspectRatio}
+              setAspectRatio={setAspectRatio}
+              onGenerate={handleGenerate}
+              isLoading={isLoading}
+            />
+          </div>
+          <div className="lg:col-span-6">
+            <MoodboardPanel
+              moodboard={moodboard}
+              isLoading={isLoading}
+              error={error}
+              onSceneUpdate={handleSceneUpdate}
+              onRegenerateImage={handleRegenerateImage}
+            />
+          </div>
+          <div className="lg:col-span-3">
+            <PromptPanel 
+              moodboard={moodboard} 
+              onExportJson={handleExportJson}
+              onExportPdf={handleExportPdf}
+              onUpdatePrompt={handleUpdatePrompt}
+              isUpdating={isUpdating}
+            />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

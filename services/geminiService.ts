@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { Moodboard, Scene, VideoLength, StylePreset } from '../types';
+import type { Moodboard, Scene, VideoLength, StylePreset, AspectRatio } from '../types';
 
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
@@ -108,7 +108,7 @@ const schema = {
   required: ['title', 'scenes', 'final_prompt']
 };
 
-export const generateSingleImage = async (prompt: string): Promise<string> => {
+export const generateSingleImage = async (prompt: string, aspectRatio: AspectRatio): Promise<string> => {
     try {
         const imageResponse = await ai.models.generateImages({
             model: 'imagen-4.0-generate-001',
@@ -116,7 +116,7 @@ export const generateSingleImage = async (prompt: string): Promise<string> => {
             config: {
                 numberOfImages: 1,
                 outputMimeType: 'image/jpeg',
-                aspectRatio: '16:9',
+                aspectRatio: aspectRatio,
             },
         });
 
@@ -131,24 +131,10 @@ export const generateSingleImage = async (prompt: string): Promise<string> => {
     }
 };
 
-const generateImagesForScenes = async (scenes: Scene[]): Promise<Scene[]> => {
-    const imageGenerationPromises = scenes.map(async (scene) => {
-        try {
-            const imageUrl = await generateSingleImage(scene.thumbnail_prompt);
-            return { ...scene, thumbnail_url: imageUrl };
-        } catch (error) {
-            console.error(`Failed to generate image for scene ${scene.id}:`, error);
-        }
-        return { ...scene, thumbnail_url: 'error' };
-    });
-
-    return Promise.all(imageGenerationPromises);
-};
-
-export const generateMoodboard = async (storyInput: string, length: VideoLength, preset: StylePreset): Promise<Moodboard> => {
+export const generateMoodboard = async (storyInput: string, length: VideoLength, preset: StylePreset, aspectRatio: AspectRatio): Promise<Moodboard> => {
   const userPrompt = `
     USER_INPUT: "${storyInput}"
-    CONSTRAINTS: ${getLengthConstraints(length)} ${getStyleInstructions(preset)} Include a Final Prompt tuned for Runway/Pika: include aspect ratio 9:16, 24fps, cinematic lens, and specific music/SFX cues. Output JSON only.
+    CONSTRAINTS: ${getLengthConstraints(length)} ${getStyleInstructions(preset)} Include a Final Prompt tuned for Runway/Pika: include aspect ratio ${aspectRatio}, 24fps, cinematic lens, and specific music/SFX cues. Output JSON only.
   `;
 
   try {
@@ -169,9 +155,9 @@ export const generateMoodboard = async (storyInput: string, length: VideoLength,
         throw new Error("Invalid JSON structure received from API.");
     }
     
-    const scenesWithImages = await generateImagesForScenes(parsedJson.scenes);
-
-    return { ...parsedJson, scenes: scenesWithImages } as Moodboard;
+    // Return the moodboard structure without images.
+    // The thumbnail_url will be undefined for each scene initially.
+    return parsedJson as Moodboard;
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
