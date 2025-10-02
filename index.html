@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-M" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moodboard Architect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            // Dark mode colors
+            'brand-bg': '#1a1a1f',
+            'brand-surface': '#2c2c34',
+            'brand-primary': '#8a4fff',
+            'brand-secondary': '#33c6ab',
+            'brand-text': '#e0e0e0',
+            'brand-subtle': '#a0a0a0',
+            
+            // Light mode colors
+            'brand-bg-light': '#f9fafb',
+            'brand-surface-light': '#ffffff',
+            'brand-text-light': '#1f2937',
+            'brand-subtle-light': '#6b7280',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.21.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+<body class="bg-brand-bg-light dark:bg-brand-bg text-brand-text-light dark:text-brand-text font-sans antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
