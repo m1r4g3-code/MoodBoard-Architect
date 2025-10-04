@@ -79,7 +79,7 @@ const InputPanel: React.FC<InputPanelProps> = ({ story, setStory, length, setLen
         <label htmlFor="style-preset" className="text-sm font-medium text-brand-subtle-light dark:text-brand-subtle mb-2 block">
           Visual Style
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {STYLE_PRESET_OPTIONS.map((option) => (
             <button
               key={option.value}

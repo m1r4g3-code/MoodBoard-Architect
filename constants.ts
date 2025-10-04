@@ -11,6 +11,13 @@ export const STYLE_PRESET_OPTIONS: { value: StylePreset; label: string }[] = [
   { value: 'comedy-short', label: 'Comedy' },
   { value: 'edgy-editorial', label: 'Edgy' },
   { value: 'childrens-story', label: 'Children\'s' },
+  { value: '3d-animation', label: '3D Animation' },
+  { value: 'action-packed', label: 'Action' },
+  { value: 'corporate-explainer', label: 'Explainer' },
+  { value: 'documentary', label: 'Documentary' },
+  { value: 'editorial', label: 'Editorial' },
+  { value: 'retro-film', label: 'Retro Film' },
+  { value: 'time-lapse', label: 'Time-lapse' },
 ];
 
 export const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string }[] = [

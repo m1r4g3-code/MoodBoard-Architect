@@ -151,12 +151,13 @@ const App: React.FC = () => {
   const handleUpdatePrompt = useCallback(async () => {
     if (!moodboard) return;
     setIsUpdating(true);
+    setError(null);
     try {
         const newFinalPrompt = await regenerateFinalPrompt(moodboard);
         setMoodboard(prev => prev ? { ...prev, final_prompt: newFinalPrompt, isDirty: false } : null);
     } catch(err) {
         console.error(err);
-        setError("Failed to update the final prompt.");
+        setError(err instanceof Error ? err.message : "Failed to update the final prompt.");
     } finally {
         setIsUpdating(false);
     }

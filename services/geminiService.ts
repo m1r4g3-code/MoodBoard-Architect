@@ -20,22 +20,14 @@ const getLengthConstraints = (length: VideoLength): string => {
   }
 };
 
-const getStyleInstructions = (preset: StylePreset): string => {
-  switch (preset) {
-    case 'comedy-short':
-      return "Visual style: bright, saturated, handheld camera, quick cuts. Tone: comedic, upbeat.";
-    case 'edgy-editorial':
-      return "Visual style: high contrast, desaturated colors with a single color pop, dramatic shadows, slow/unconventional camera moves. Tone: edgy, mysterious, fashion-forward.";
-    case 'childrens-story':
-      return "Visual style: soft, pastel colors, whimsical and gentle lighting, smooth camera movements. Tone: innocent, magical, heartwarming.";
-    case 'cinematic':
-    default:
-      return "Visual style: cinematic, balanced composition, professional lighting, filmic colors. Tone: engaging, high-quality.";
-  }
-};
+const systemPrompt = `You are "Moodboard Architect", an elite AI assistant acting as a professional Hollywood storyboard artist and film director. Your mission is to transform even the briefest story ideas into comprehensive, structured JSON moodboards for high-end video production. Your output must be valid JSON that strictly adheres to the provided schema. Do not add any commentary outside the JSON structure.
 
+Core Directives:
+1.  **Infer the Vision:** Analyze the user's input to understand the core story, unspoken tone, and desired outcome (e.g., romantic, epic, comedic, thriller). Your choices must reflect this inferred vision.
+2.  **Direct with Authority:** Structure the storyboard with a clear narrative arc: a beginning, middle, and end, even from a short prompt.
+3.  **Fill Gaps Creatively:** When details are missing, make smart, cinematic assumptions for camera angles, lighting, mood, pacing, and transitions. Always choose the most visually compelling and emotionally resonant option. Never ask for clarification.
+4.  **Masterful Prompts:** For each scene, create a concise, visually descriptive prompt for an AI image generator. The 'final_prompt' must be a masterpiece of prompt engineering, ready for advanced text-to-video platforms (like RunwayML, Pika, Sora), weaving all elements into a professional, actionable script.`;
 
-const systemPrompt = `You are "Moodboard Architect", an assistant that transforms short user story text into a structured JSON moodboard for video generation. Output MUST be valid JSON that matches the schema provided. Do not add extra commentary. If uncertain, pick the more cinematic option. Generate a detailed final prompt suitable for a text-to-video generator like Runway or Pika, including aspect ratio, fps, and specific shot timings. For each scene, also create a concise, visually descriptive prompt suitable for an AI image generator to create a thumbnail.`;
 
 const schema = {
   type: Type.OBJECT,
@@ -53,11 +45,14 @@ const schema = {
           camera: {
             type: Type.OBJECT,
             properties: {
-              angle: { type: Type.STRING, description: "e.g., 'close-up', 'wide shot', 'low angle'." },
-              lens: { type: Type.STRING, description: "e.g., '50mm', '24mm'." },
-              movement: { type: Type.STRING, description: "e.g., 'static', 'handheld follow', 'slow push-in'." },
+              angle: { type: Type.STRING, description: "Camera angle relative to the subject, e.g., 'eye-level', 'low angle', 'high angle', 'dutch angle'." },
+              shot_type: { type: Type.STRING, description: "Framing of the shot, e.g., 'establishing shot', 'wide shot', 'medium shot', 'close-up', 'extreme close-up'." },
+              focal_length: { type: Type.STRING, description: "Lens focal length, e.g., '35mm', '85mm portrait', '14mm wide-angle'." },
+              aperture: { type: Type.STRING, description: "Aperture setting for depth of field, e.g., 'f/1.4 for shallow depth of field', 'f/16 for deep focus'." },
+              shutter_speed: { type: Type.STRING, description: "Shutter speed for motion blur effect, e.g., '1/50s for natural motion', '1/1000s to freeze action'." },
+              movement: { type: Type.STRING, description: "e.g., 'static', 'handheld follow', 'slow push-in', 'dolly zoom'." },
             },
-            required: ['angle', 'lens', 'movement']
+            required: ['angle', 'shot_type', 'focal_length', 'aperture', 'shutter_speed', 'movement']
           },
           characters: {
             type: Type.ARRAY,
@@ -102,7 +97,15 @@ const schema = {
     },
     final_prompt: {
       type: Type.STRING,
-      description: "A single, detailed, copy-and-paste ready prompt for a text-to-video AI generator. It must consolidate all scene information into a coherent set of instructions, including timings, camera details, style, and audio cues."
+      description: `A single, masterful, copy-and-paste ready prompt for a professional text-to-video AI generator (like Sora, Pika, RunwayML). This prompt must be a masterpiece of cinematic language and technical detail. It must:
+1.  **Narrative Flow:** Weave all scenes into a single, cohesive narrative. Use clear scene delineations.
+2.  **Precise Timing:** Specify exact timestamps for key actions, character expressions, and camera movements (e.g., "@2s, a micro-expression of doubt; @4s, camera begins slow push-in").
+3.  **Pro-Level Cinematography:** Detail professional camera and lens choices (e.g., 'shot on ARRI Alexa Mini with 35mm anamorphic lenses'). Specify exact settings like aperture ('f/1.4 for extremely shallow DoF'), shutter speed ('1/120s for cinematic motion blur'), and ISO. Describe complex camera movements ('a dynamic crane shot that swoops down and transitions into a handheld follow').
+4.  **Artistic Lighting:** Describe lighting with professional terminology (e.g., 'dramatic chiaroscuro lighting using a single key light', 'soft, diffused light from a large silk', 'golden hour magic light creating long shadows and lens flare').
+5.  **Signature Visual Style:** Dictate a specific and opinionated visual style. Mention color grading techniques ('moody teal and orange grade with crushed blacks', 'a bleach bypass process for a gritty, desaturated look'), film stock emulation ('emulating the grain and color science of Kodak Vision3 500T'), and atmospheric effects ('volumetric haze to catch light rays', 'rain-slicked streets reflecting neon signs').
+6.  **Evocative Audio Design:** Include a detailed audio plan. Describe the musical score's evolution, specifying instruments and mood. Pinpoint key sound effects (SFX) and their emotional purpose (e.g., 'a single, sharp sound of a breaking glass to punctuate the tension').
+7.  **Technical Specs:** Explicitly state the aspect ratio and frames per second (fps).
+This prompt should be written as if a seasoned Director of Photography is giving instructions to their crew, leaving no room for ambiguity and aiming for a visually stunning, award-winning result.`
     }
   },
   required: ['title', 'scenes', 'final_prompt']
@@ -133,8 +136,13 @@ export const generateSingleImage = async (prompt: string, aspectRatio: AspectRat
 
 export const generateMoodboard = async (storyInput: string, length: VideoLength, preset: StylePreset, aspectRatio: AspectRatio): Promise<Moodboard> => {
   const userPrompt = `
+    Analyze the following user input for its inherent story, tone, and genre. Then, using that understanding and the provided style preset, create a complete moodboard.
+    
     USER_INPUT: "${storyInput}"
-    CONSTRAINTS: ${getLengthConstraints(length)} ${getStyleInstructions(preset)} Include a Final Prompt tuned for Runway/Pika: include aspect ratio ${aspectRatio}, 24fps, cinematic lens, and specific music/SFX cues. Output JSON only.
+    
+    STYLE_PRESET: "${preset}" - Use this as a strong guideline, but let the tone of the USER_INPUT override specifics if there's a creative conflict. For example, if the story is dark but the preset is 'comedy', lean into dark comedy.
+
+    CONSTRAINTS: ${getLengthConstraints(length)}. The final video's aspect ratio must be ${aspectRatio} at 24fps. Ensure the final_prompt includes specific music/SFX cues. Output valid JSON only.
   `;
 
   try {
@@ -169,13 +177,33 @@ export const generateMoodboard = async (storyInput: string, length: VideoLength,
 };
 
 export const regenerateFinalPrompt = async (moodboard: Moodboard): Promise<string> => {
-    const prompt = `
-        Given the following JSON data for a video moodboard, generate a new 'final_prompt' that is a detailed, copy-and-paste ready prompt for a text-to-video AI generator like Runway or Pika. It must consolidate all scene information into a coherent set of instructions, including timings, camera details, style, and audio cues.
-        
-        JSON DATA:
-        ${JSON.stringify({title: moodboard.title, scenes: moodboard.scenes}, null, 2)}
+    // Create a version of the moodboard without the heavy base64 image data to avoid exceeding token limits.
+    const moodboardForPrompt = {
+        title: moodboard.title,
+        scenes: moodboard.scenes.map(scene => {
+            const { thumbnail_url, ...sceneWithoutImage } = scene;
+            return sceneWithoutImage;
+        }),
+    };
 
-        Respond with only the final prompt text, no extra explanations or markdown.
+    const prompt = `
+        You are an expert prompt engineer for text-to-video AI models.
+        Given the following JSON data for a video moodboard, you must generate a new 'final_prompt' that is a masterpiece of cinematic language and technical detail, ready for platforms like Sora, Pika, or RunwayML.
+
+        The prompt MUST be exceptionally detailed and follow these professional directives:
+        1.  **Narrative Flow:** Weave all scenes into a single, cohesive narrative. Use clear scene delineations.
+        2.  **Precise Timing:** Specify exact timestamps for key actions, character expressions, and camera movements (e.g., "@2s, a micro-expression of doubt; @4s, camera begins slow push-in").
+        3.  **Pro-Level Cinematography:** Detail professional camera and lens choices (e.g., 'shot on ARRI Alexa Mini with 35mm anamorphic lenses'). Specify exact settings like aperture ('f/1.4 for extremely shallow DoF'), shutter speed ('1/120s for cinematic motion blur'), and ISO. Describe complex camera movements ('a dynamic crane shot that swoops down and transitions into a handheld follow').
+        4.  **Artistic Lighting:** Describe lighting with professional terminology (e.g., 'dramatic chiaroscuro lighting using a single key light', 'soft, diffused light from a large silk', 'golden hour magic light creating long shadows and lens flare').
+        5.  **Signature Visual Style:** Dictate a specific and opinionated visual style. Mention color grading techniques ('moody teal and orange grade with crushed blacks', 'a bleach bypass process for a gritty, desaturated look'), film stock emulation ('emulating the grain and color science of Kodak Vision3 500T'), and atmospheric effects ('volumetric haze to catch light rays', 'rain-slicked streets reflecting neon signs').
+        6.  **Evocative Audio Design:** Include a detailed audio plan. Describe the musical score's evolution, specifying instruments and mood. Pinpoint key sound effects (SFX) and their emotional purpose (e.g., 'a single, sharp sound of a breaking glass to punctuate the tension').
+        
+        The final output should be written as if a seasoned Director of Photography is giving instructions to their crew, leaving no room for ambiguity.
+
+        MOODBOARD JSON DATA:
+        ${JSON.stringify(moodboardForPrompt, null, 2)}
+
+        Respond with ONLY the final prompt text. Do not include any extra explanations, labels, or markdown formatting.
     `;
 
     try {
@@ -186,6 +214,9 @@ export const regenerateFinalPrompt = async (moodboard: Moodboard): Promise<strin
         return response.text.trim();
     } catch (error) {
         console.error("Error regenerating final prompt:", error);
+        if (error instanceof Error && error.message.includes('token count')) {
+            throw new Error("The moodboard description is too long to process. Please try shortening some of the text fields.");
+        }
         throw new Error("Failed to update the final prompt.");
     }
 };

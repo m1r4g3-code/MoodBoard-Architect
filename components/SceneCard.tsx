@@ -84,11 +84,23 @@ const SceneCard: React.FC<SceneCardProps> = ({ scene, sceneNumber, onUpdate, onR
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-          <div className="flex items-center">
-              <div className="flex-shrink-0 w-5 h-5 mr-2 text-brand-secondary"><CameraIcon/></div>
-              <EditableField value={scene.camera.angle} onChange={(val) => handleUpdate('angle', val, 'camera')} />
-              <EditableField value={scene.camera.lens} onChange={(val) => handleUpdate('lens', val, 'camera')} />
+          <div className="md:col-span-2 space-y-2">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 w-5 h-5 mr-2 text-brand-secondary"><CameraIcon /></div>
+              <span className="font-semibold text-brand-text-light dark:text-brand-text text-sm">Camera Details</span>
+            </div>
+            <div className="pl-7 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <EditableField value={scene.camera.shot_type} onChange={(val) => handleUpdate('shot_type', val, 'camera')} />
+                <EditableField value={scene.camera.angle} onChange={(val) => handleUpdate('angle', val, 'camera')} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <EditableField value={scene.camera.focal_length} onChange={(val) => handleUpdate('focal_length', val, 'camera')} />
+                <EditableField value={scene.camera.aperture} onChange={(val) => handleUpdate('aperture', val, 'camera')} />
+                <EditableField value={scene.camera.shutter_speed} onChange={(val) => handleUpdate('shutter_speed', val, 'camera')} />
+              </div>
               <EditableField value={scene.camera.movement} onChange={(val) => handleUpdate('movement', val, 'camera')} />
+            </div>
           </div>
           <div className="flex items-center">
               <div className="flex-shrink-0 w-5 h-5 mr-2 text-brand-secondary"><LightbulbIcon/></div>

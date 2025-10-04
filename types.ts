@@ -1,6 +1,6 @@
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type VideoLength = '8s' | '16s' | '30s';
-export type StylePreset = 'cinematic' | 'comedy-short' | 'edgy-editorial' | 'childrens-story';
+export type StylePreset = 'cinematic' | 'comedy-short' | 'edgy-editorial' | 'childrens-story' | '3d-animation' | 'action-packed' | 'corporate-explainer' | 'documentary' | 'editorial' | 'retro-film' | 'time-lapse';
 
 export interface Character {
   name: string;
@@ -12,7 +12,10 @@ export interface Character {
 
 export interface Camera {
   angle: string;
-  lens: string;
+  shot_type: string;
+  focal_length: string;
+  aperture: string;
+  shutter_speed: string;
   movement: string;
 }
 
